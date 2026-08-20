@@ -26,11 +26,9 @@ jobs:
 
     - name: Install Buildozer Dependencies
       run: |
-        # Added --user flags to bypass cloud permission blocks safely
-        python -m pip install --upgrade pip --user
-        python -m pip install buildozer cython kivy --user
-        # Append local user bin to system path so 'buildozer' command is recognized globally
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        # Added --break-system-packages flag to force compilation execution over the cloud environment safely
+        python -m pip install --upgrade pip --break-system-packages
+        python -m pip install buildozer cython kivy --break-system-packages
 
     - name: Build Android APK with Buildozer
       run: |
