@@ -13,13 +13,13 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Build APK using Pre-Bundled Android SDK Engine
-      uses: ArtemGovorov/buildozer-action@v1
+    - name: Build APK using Official Buildozer Action
+      # Corrected username below: ArtemSBulgakov
+      uses: ArtemSBulgakov/buildozer-action@v1
+      id: buildozer
       with:
         command: buildozer android debug
-        # Forces the server to use a stable, cached compiler version
-        buildozer_version: stable 
-        repository_root: .
+        buildozer_version: stable
 
     - name: Upload Finished APK Artifact
       uses: actions/upload-artifact@v4
