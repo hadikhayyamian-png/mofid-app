@@ -22,13 +22,11 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-        update-environment: true
 
-    - name: Install Buildozer Dependencies
+    - name: Install Buildozer and Dependencies
       run: |
-        # Added --break-system-packages flag to force compilation execution over the cloud environment safely
-        python -m pip install --upgrade pip --break-system-packages
-        python -m pip install buildozer cython kivy --break-system-packages
+        pip install --upgrade pip --break-system-packages
+        pip install buildozer cython kivy --break-system-packages
 
     - name: Build Android APK with Buildozer
       run: |
