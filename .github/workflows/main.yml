@@ -33,8 +33,8 @@ jobs:
 
     - name: Build APK (Debug Mode)
       run: |
-        # Forces Buildozer to print everything live to the GitHub log console
-        buildozer --verbose android debug
+        # Crucial Fix: 'buildozer --warndash' overrides the root-user security check and prevents Exit Code 100
+        buildozer --verbose android debug --warndash
       env:
         APP_ANDROID_ACCEPT_SDK_LICENSE: "1"
         BUILDOZER_ALLOW_ORG_TEST_DOMAIN: "1"
@@ -44,4 +44,3 @@ jobs:
       with:
         name: MofidApp-Android-Package
         path: bin/*.apk
-
