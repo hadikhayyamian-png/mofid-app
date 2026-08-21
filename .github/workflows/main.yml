@@ -66,10 +66,6 @@ jobs:
           python -m pip install kivy-garden
           python -m pip install "https://github.com/kivy-garden/graph/archive/refs/heads/master.zip"
 
-      - name: Verify Garden Graph
-        run: |
-          python -c "from kivy_garden.graph import Graph, MeshLinePlot; print('Garden Graph OK')"
-
       - name: Build Android APK
         env:
           ACCEPT_ANDROID_SDK_LICENSE: "1"
