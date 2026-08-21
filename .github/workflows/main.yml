@@ -76,6 +76,17 @@ jobs:
           ln -sfn /usr/local/lib/android/sdk \
             "$HOME/.buildozer/android/platform/android-sdk"
 
+          mkdir -p /usr/local/lib/android/sdk/tools
+
+          ln -sfn /usr/local/lib/android/sdk/cmdline-tools/latest/bin \
+            /usr/local/lib/android/sdk/tools/bin
+
+          echo "Buildozer SDK compatibility paths:"
+          ls -la "$HOME/.buildozer/android/platform/android-sdk"
+          ls -la "$HOME/.buildozer/android/platform/android-sdk/tools/bin"
+          test -x "$HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager"
+          echo "Buildozer sdkmanager found successfully"
+
       - name: Build APK
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
