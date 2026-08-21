@@ -9,7 +9,7 @@ source.include_exts = py,png,jpg,jpeg,kv,atlas
 
 version = 0.1
 
-requirements = python3,kivy,kivy-garden
+requirements = python3,kivy
 
 orientation = portrait
 fullscreen = 1
