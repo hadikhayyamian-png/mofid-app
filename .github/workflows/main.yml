@@ -13,35 +13,40 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Setup System Compilers
+    - name: Install System Dependencies
       run: |
-        sudo apt update
-        sudo apt install -y git zip unzip openjdk-17-jdk python3-pip python3-venv autoconf libtool pkg-config zlib1g-dev libncurses5-dev libssl-dev cmake
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential git zip unzip openjdk-17-jdk autoconf libtool \
+          pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev \
+          libtinfo5 cmake libffi-dev libssl-dev
 
-    - name: Set up Python
+    - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
-    - name: Install Buildozer and Dependencies via Venv
+    - name: Install Buildozer & Kivy (Virtual Env)
       run: |
-        # Creates an isolated environment to bypass all system environment and permission errors
-        python -m venv venv
+        python3 -m venv venv
         source venv/bin/activate
         pip install --upgrade pip
-        pip install cython kivy
-        pip install git+https://github.com
-        # Add the virtual environment binaries to the global execution path
-        echo "$(pwd)/venv/bin" >> $GITHUB_PATH
+        pip install buildozer cython kivy
+        
+        # Add venv to the global path so subsequent steps can find 'buildozer'
+        echo "$GITHUB_WORKSPACE/venv/bin" >> $GITHUB_PATH
 
-    - name: Build Android APK with Buildozer
+    - name: Build APK (Debug Mode)
       run: |
         source venv/bin/activate
-        buildozer android debug
+        # 'yes' command automatically accepts the Android SDK licenses
+        yes | buildozer android debug
       env:
-        APP_ANDROID_ACCEPT_SDK_LICENSE: "1" 
+        # These flags help the compiler find the correct Java/SDK paths
+        APP_ANDROID_ACCEPT_SDK_LICENSE: "1"
+        BUILDOZER_ALLOW_ORG_TEST_DOMAIN: "1"
 
-    - name: Upload Finished APK Artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: MofidApp-Android-Package
