@@ -60,9 +60,7 @@ jobs:
         run: |
           mkdir -p "$HOME/.android"
           touch "$HOME/.android/repositories.cfg"
-
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
             "platforms;android-34" \
@@ -75,8 +73,8 @@ jobs:
 
       - name: Build Android APK
         env:
-          P4A_RELEASE = "1"
-          APP_ANDROID_ACCEPT_SDK_LICENSE = "1"
+          P4A_RELEASE: "1"
+          APP_ANDROID_ACCEPT_SDK_LICENSE: "1"
         run: |
           buildozer -v android debug
 
