@@ -65,9 +65,7 @@ jobs:
       - name: Install Kivy Garden Graph
         run: |
           python -m pip install kivy-garden
-          garden install graph
           python -m pip install https://github.com/kivy-garden/graph/archive/refs/heads/master.zip
-          
 
       - name: Build Android APK
         run: |
