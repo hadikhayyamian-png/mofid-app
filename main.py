@@ -1,286 +1,407 @@
-from kivy_garden.graph import Graph, MeshLinePlot
+import math
+import random
+from datetime import datetime, timedelta
 
 from kivy.app import App
+from kivy.clock import Clock
+from kivy.graphics import Color, Line, Rectangle, Ellipse
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.spinner import Spinner
-from kivy.uix.label import Label
 from kivy.uix.button import Button
-from kivy.graphics import Color, Rectangle
-import random
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.widget import Widget
 
 
-class TouchPanGraph(Graph):
+class ChartWidget(Widget):
+
+    PERIODS = {
+        "1D": 1,
+        "3D": 3,
+        "1W": 7,
+        "2W": 14,
+        "1M": 30,
+        "6M": 180,
+    }
 
     def __init__(self, **kwargs):
-        super(TouchPanGraph, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
-        self.total_points = 60
-        self.touch_start_x = 0
-        self.view_span = 15
+        self.data = []
+        self.period = 14
+        self.start_index = 0
+        self.selected_index = None
+
+        self.bind(size=self.redraw, pos=self.redraw)
+
+    def set_data(self, data):
+        self.data = data
+        self.selected_index = None
+
+        if self.data:
+            self.start_index = max(0, len(self.data) - self.period)
+
+        self.redraw()
+
+    def set_period(self, period):
+        self.period = self.PERIODS[period]
+        self.selected_index = None
+
+        if self.data:
+            self.start_index = max(0, len(self.data) - self.period)
+
+        self.redraw()
+
+    def visible_data(self):
+        if not self.data:
+            return []
+
+        end = min(len(self.data), self.start_index + self.period)
+        return self.data[self.start_index:end]
+
+    def redraw(self, *args):
+        self.canvas.clear()
+
+        with self.canvas:
+            Color(0.055, 0.055, 0.055, 1)
+            Rectangle(pos=self.pos, size=self.size)
+
+        visible = self.visible_data()
+
+        if not visible:
+            return
+
+        left = self.x + 55
+        right = self.right - 20
+        bottom = self.y + 45
+        top = self.top - 30
+
+        if right <= left or top <= bottom:
+            return
+
+        values = []
+
+        for item in visible:
+            values.append(item["buy"])
+            values.append(item["sell"])
+
+        ymin = min(values)
+        ymax = max(values)
+
+        if ymax == ymin:
+            ymax += 1
+            ymin -= 1
+
+        margin = (ymax - ymin) * 0.1
+        ymin -= margin
+        ymax += margin
+
+        def x_position(i):
+            if len(visible) == 1:
+                return (left + right) / 2
+
+            return left + i * (right - left) / (len(visible) - 1)
+
+        def y_position(value):
+            return bottom + (value - ymin) / (ymax - ymin) * (top - bottom)
+
+        # Grid
+        Color(0.18, 0.18, 0.18, 1)
+
+        for j in range(5):
+            y = bottom + j * (top - bottom) / 4
+            Line(points=[left, y, right, y], width=1)
+
+        # Buy line
+        buy_points = []
+
+        for i, item in enumerate(visible):
+            buy_points.extend([x_position(i), y_position(item["buy"])])
+
+        Color(0.25, 0.85, 0.35, 1)
+
+        if len(buy_points) >= 4:
+            Line(points=buy_points, width=2)
+
+        # Sell line
+        sell_points = []
+
+        for i, item in enumerate(visible):
+            sell_points.extend([x_position(i), y_position(item["sell"])])
+
+        Color(0.95, 0.25, 0.25, 1)
+
+        if len(sell_points) >= 4:
+            Line(points=sell_points, width=2)
+
+        # Data point markers
+        for i, item in enumerate(visible):
+
+            x = x_position(i)
+
+            Color(0.25, 0.85, 0.35, 1)
+            Ellipse(
+                pos=(x - 4, y_position(item["buy"]) - 4),
+                size=(8, 8)
+            )
+
+            Color(0.95, 0.25, 0.25, 1)
+            Ellipse(
+                pos=(x - 4, y_position(item["sell"]) - 4),
+                size=(8, 8)
+            )
+
+        # Selected point
+        if self.selected_index is not None:
+            local_index = self.selected_index - self.start_index
+
+            if 0 <= local_index < len(visible):
+
+                item = self.data[self.selected_index]
+                x = x_position(local_index)
+
+                Color(1, 1, 1, 1)
+                Line(
+                    points=[x, bottom, x, top],
+                    width=1
+                )
+
+                Color(1, 1, 1, 1)
+
+                Ellipse(
+                    pos=(x - 7, y_position(item["buy"]) - 7),
+                    size=(14, 14)
+                )
+
+                Ellipse(
+                    pos=(x - 7, y_position(item["sell"]) - 7),
+                    size=(14, 14)
+                )
 
     def on_touch_down(self, touch):
 
-        if self.collide_point(*touch.pos):
-            self.touch_start_x = touch.x
-            touch.grab(self)
+        if not self.collide_point(*touch.pos):
+            return super().on_touch_down(touch)
+
+        visible = self.visible_data()
+
+        if not visible:
             return True
 
-        return super(TouchPanGraph, self).on_touch_down(touch)
+        left = self.x + 55
+        right = self.right - 20
+
+        if right <= left:
+            return True
+
+        # Find closest data point.
+        best_index = None
+        best_distance = float("inf")
+
+        for i in range(len(visible)):
+
+            if len(visible) == 1:
+                x = (left + right) / 2
+            else:
+                x = left + i * (right - left) / (len(visible) - 1)
+
+            distance = abs(touch.x - x)
+
+            if distance < best_distance:
+                best_distance = distance
+                best_index = i
+
+        if best_index is not None and best_distance <= 40:
+
+            self.selected_index = self.start_index + best_index
+
+            self.redraw()
+
+            item = self.data[self.selected_index]
+
+            app = App.get_running_app()
+
+            app.show_point_information(item)
+
+            return True
+
+        return True
 
     def on_touch_move(self, touch):
 
-        if touch.grab_current is self:
-
-            dx = touch.x - self.touch_start_x
-            shift = int(dx / 30)
-
-            if shift != 0:
-
-                new_xmin = self.xmin - shift
-                new_xmax = self.xmax - shift
-
-                if new_xmin >= 0 and new_xmax <= self.total_points:
-                    self.xmin = new_xmin
-                    self.xmax = new_xmax
-                    self.touch_start_x = touch.x
-
+        if not self.collide_point(*touch.pos):
             return True
 
-        return super(TouchPanGraph, self).on_touch_move(touch)
+        if not hasattr(self, "_last_touch_x"):
+            self._last_touch_x = touch.x
+            return True
+
+        dx = touch.x - self._last_touch_x
+
+        if abs(dx) >= 8:
+
+            shift = -1 if dx > 0 else 1
+
+            new_start = self.start_index + shift
+
+            maximum = max(0, len(self.data) - self.period)
+
+            new_start = max(0, min(new_start, maximum))
+
+            if new_start != self.start_index:
+                self.start_index = new_start
+                self.selected_index = None
+                self.redraw()
+
+            self._last_touch_x = touch.x
+
+        return True
 
     def on_touch_up(self, touch):
 
-        if touch.grab_current is self:
-            touch.ungrab(self)
-            return True
+        self._last_touch_x = None
 
-        return super(TouchPanGraph, self).on_touch_up(touch)
+        return True
 
 
-class EnhancedGraphApp(App):
+class MofidApp(App):
 
     def build(self):
 
-        self.root_layout = BoxLayout(
-            orientation='vertical',
-            padding=15,
-            spacing=10
-        )
+        self.title = "Mofid Tracker"
 
-        with self.root_layout.canvas.before:
-            Color(0.07, 0.07, 0.07, 1)
-
-            self.rect = Rectangle(
-                size=self.root_layout.size,
-                pos=self.root_layout.pos
-            )
-
-        self.root_layout.bind(
-            size=self._update_rect,
-            pos=self._update_rect
-        )
-
-        title = Label(
-            text="Mofid Funds - Legal Money Flow Tracker",
-            font_size='18sp',
-            size_hint_y=0.08,
-            bold=True
-        )
-
-        self.root_layout.add_widget(title)
-
-        selector_row = GridLayout(
-            cols=2,
-            size_hint_y=0.08,
-            spacing=10
-        )
-
-        selector_row.add_widget(
-            Label(
-                text="Select Fund:",
-                size_hint_x=0.3,
-                halign='right'
-            )
-        )
-
-        self.fund_spinner = Spinner(
-            text='Etemas (اتماس)',
-            values=(
-                'Etemas (اتماس)',
-                'Nami (نامی)',
-                'Aram (آرام)',
-                'Momtaz (ممتاز)'
-            ),
-            size_hint_x=0.7,
-            background_color=(0.15, 0.15, 0.15, 1)
-        )
-
-        self.fund_spinner.bind(
-            text=self.on_fund_change
-        )
-
-        selector_row.add_widget(
-            self.fund_spinner
-        )
-
-        self.root_layout.add_widget(
-            selector_row
-        )
-
-        self.total_points = 60
-
-        self.buy_data = [
-            random.randint(150, 550)
-            for _ in range(self.total_points)
-        ]
-
-        self.sell_data = [
-            random.randint(100, 500)
-            for _ in range(self.total_points)
-        ]
-
-        self.graph = TouchPanGraph(
-            xlabel='Trading Days (Past -> Present)',
-            ylabel='Billion Rials',
-            x_ticks_major=5,
-            y_ticks_major=100,
-            y_grid_label=True,
-            x_grid_label=True,
+        root = BoxLayout(
+            orientation="vertical",
             padding=10,
-            x_grid=True,
-            y_grid=True,
-            xmin=self.total_points - 15,
-            xmax=self.total_points,
-            ymin=0,
-            ymax=600,
-            draw_border=False,
-            background_color=(0.1, 0.1, 0.1, 1),
-            label_options={
-                'color': [1, 1, 1, 1]
-            }
+            spacing=8
         )
 
-        self.graph.total_points = self.total_points
+        with root.canvas.before:
+            Color(0.035, 0.035, 0.035, 1)
+            self.background = Rectangle(
+                pos=root.pos,
+                size=root.size
+            )
 
-        self.root_layout.add_widget(
-            self.graph
-        )
-
-        legend_row = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=0.05,
-            spacing=20
-        )
-
-        legend_row.add_widget(
-            Label(
-                text="● Legal Buy Volume (Green)",
-                color=(0.3, 0.85, 0.3, 1),
-                font_size='12sp'
+        root.bind(
+            pos=lambda obj, value: setattr(
+                self.background, "pos", value
+            ),
+            size=lambda obj, value: setattr(
+                self.background, "size", value
             )
         )
 
-        legend_row.add_widget(
-            Label(
-                text="● Legal Sell Volume (Red)",
-                color=(0.95, 0.25, 0.25, 1),
-                font_size='12sp'
+        # Title
+        title = Label(
+            text="Mofid Funds - Money Flow Tracker",
+            font_size="19sp",
+            bold=True,
+            size_hint_y=None,
+            height=45
+        )
+
+        root.add_widget(title)
+
+        # Symbol selection
+        symbol_row = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height=45,
+            spacing=5
+        )
+
+        self.symbol_input = TextInput(
+            text="Etemas",
+            hint_text="Enter نماد",
+            multiline=False,
+            size_hint_x=0.65
+        )
+
+        add_button = Button(
+            text="+ Add نماد",
+            size_hint_x=0.35
+        )
+
+        add_button.bind(on_press=self.add_symbol)
+
+        symbol_row.add_widget(self.symbol_input)
+        symbol_row.add_widget(add_button)
+
+        root.add_widget(symbol_row)
+
+        # Symbol list
+        self.symbols = [
+            "Etemas",
+            "Nami",
+            "Aram",
+            "Momtaz"
+        ]
+
+        self.symbol_buttons = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height=40,
+            spacing=4
+        )
+
+        root.add_widget(self.symbol_buttons)
+
+        self.refresh_symbol_buttons()
+
+        # Chart
+        self.chart = ChartWidget()
+
+        root.add_widget(self.chart)
+
+        # Information area
+        self.info_label = Label(
+            text="Tap a data point to see its value.",
+            size_hint_y=None,
+            height=55,
+            halign="center",
+            valign="middle"
+        )
+
+        self.info_label.bind(
+            size=lambda obj, value: setattr(
+                obj, "text_size", value
             )
         )
 
-        self.root_layout.add_widget(
-            legend_row
+        root.add_widget(self.info_label)
+
+        # Period buttons
+        period_row = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height=45,
+            spacing=3
         )
 
-        control_row = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=0.08,
-            spacing=10
-        )
+        for period in ["1D", "3D", "1W", "2W", "1M", "6M"]:
 
-        instruction_label = Label(
-            text="Drag directly on the chart area to slide weeks",
-            font_size='12sp',
-            size_hint_x=0.7
-        )
+            button = Button(text=period)
 
-        btn_reset = Button(
-            text="Reset View",
-            on_press=self.reset_view,
-            background_color=(0.3, 0.3, 0.3, 1),
-            size_hint_x=0.3
-        )
+            button.bind(
+                on_press=lambda instance,
+                p=period: self.change_period(p)
+            )
 
-        control_row.add_widget(
-            instruction_label
-        )
+            period_row.add_widget(button)
 
-        control_row.add_widget(
-            btn_reset
-        )
+        root.add_widget(period_row)
 
-        self.root_layout.add_widget(
-            control_row
-        )
+        self.current_symbol = "Etemas"
 
-        self.plot_buy = MeshLinePlot(
-            color=[0.3, 0.85, 0.3, 1]
-        )
+        self.load_symbol(self.current_symbol)
 
-        self.plot_sell = MeshLinePlot(
-            color=[0.95, 0.25, 0.25, 1]
-        )
+        return root
 
-        self.graph.add_plot(
-            self.plot_buy
-        )
+    def generate_mock_data(self, days=180):
 
-        self.graph.add_plot(
-            self.plot_sell
-        )
+        data = []
 
-        self.update_plots()
+        base_buy = 350
+        base_sell = 300
 
-        return self.root_layout
-
-    def update_plots(self):
-
-        self.plot_buy.points = [
-            (i, self.buy_data[i])
-            for i in range(self.total_points)
-        ]
-
-        self.plot_sell.points = [
-            (i, self.sell_data[i])
-            for i in range(self.total_points)
-        ]
-
-    def reset_view(self, instance):
-
-        self.graph.xmin = self.total_points - 15
-        self.graph.xmax = self.total_points
-
-    def on_fund_change(self, spinner, text):
-
-        self.buy_data = [
-            random.randint(150, 550)
-            for _ in range(self.total_points)
-        ]
-
-        self.sell_data = [
-            random.randint(100, 500)
-            for _ in range(self.total_points)
-        ]
-
-        self.update_plots()
-        self.reset_view(None)
-
-    def _update_rect(self, instance, value):
-
-        self.rect.pos = instance.pos
-        self.rect.size = instance.size
-
-
-if __name__ == '__main__':
-    EnhancedGraphApp().run()
+       
