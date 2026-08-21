@@ -15,14 +15,16 @@ orientation = portrait
 fullscreen = 1
 
 android.archs = arm64-v8a
+
 android.api = 34
 android.minapi = 24
 android.ndk_api = 24
 
 android.permissions = INTERNET
 
-# Don't package build artifacts
-source.exclude_dirs = .git,.github,.buildozer,bin,venv
+android.accept_sdk_license = True
+
+source.exclude_dirs = .git,.github,.buildozer,bin
 
 [buildozer]
 
