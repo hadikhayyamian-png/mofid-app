@@ -13,7 +13,7 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Install System Dependencies
+    - name: Install Linux Packages
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -21,21 +21,20 @@ jobs:
           pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev \
           libtinfo5 cmake libffi-dev libssl-dev python3-setuptools
 
-    - name: Set up Python 3.11
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
-    - name: Install Buildozer & Core Packages
+    - name: Install Compilers
       run: |
-        # Force core libraries directly into the runner shell workspace
         pip install --upgrade pip --break-system-packages
-        pip install cython kivy kivy-garden buildozer --break-system-packages
+        pip install cython kivy buildozer --break-system-packages
 
     - name: Build APK (Debug Mode)
       run: |
-        # 'yes' automatically answers structural Android license prompts
-        yes | buildozer android debug
+        # Forces Buildozer to print everything live to the GitHub log console
+        buildozer --verbose android debug
       env:
         APP_ANDROID_ACCEPT_SDK_LICENSE: "1"
         BUILDOZER_ALLOW_ORG_TEST_DOMAIN: "1"
@@ -45,3 +44,4 @@ jobs:
       with:
         name: MofidApp-Android-Package
         path: bin/*.apk
+
