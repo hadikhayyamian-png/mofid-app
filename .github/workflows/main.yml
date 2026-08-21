@@ -61,10 +61,28 @@ jobs:
           python -m pip install buildozer
           python -m pip install cython==0.29.34
 
-      - name: Install Kivy Garden Graph
+      - name: Add Kivy Garden Graph to application
         run: |
-          python -m pip install kivy-garden
-          python -m pip install "https://github.com/kivy-garden/graph/archive/refs/heads/master.zip"
+          mkdir -p kivy_garden
+
+          curl -L \
+            https://github.com/kivy-garden/graph/archive/refs/heads/master.tar.gz \
+            -o graph.tar.gz
+
+          tar -xzf graph.tar.gz
+
+          GRAPH_DIR=$(find . -maxdepth 1 -type d -name "graph-*")
+
+          cp -R "$GRAPH_DIR" kivy_garden/graph
+
+          touch kivy_garden/__init__.py
+
+          rm -rf "$GRAPH_DIR"
+          rm graph.tar.gz
+
+      - name: Show application files
+        run: |
+          find kivy_garden -maxdepth 2 -type f -print
 
       - name: Build Android APK
         env:
