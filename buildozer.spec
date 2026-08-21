@@ -9,7 +9,7 @@ source.include_exts = py,png,jpg,kv,atlas
 
 version = 0.1
 
-requirements = python3,kivy,kivy_garden.graph
+requirements = python3,kivy,kivy-garden.graph
 
 orientation = portrait
 fullscreen = 1
@@ -20,8 +20,6 @@ android.api = 34
 android.minapi = 24
 android.ndk = 25b
 android.ndk_api = 24
-
-android.accept_sdk_license = True
 
 android.permissions = INTERNET
 
