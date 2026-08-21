@@ -5,25 +5,25 @@ package.name = mofidtracker
 package.domain = org.mofid
 
 source.dir = .
-source.include_exts = py,png,jpg,jpeg,kv,atlas
+source.include_exts = py,png,jpg,kv,atlas
 
 version = 0.1
 
-requirements = python3,kivy
+requirements = python3,kivy,kivy_garden.graph
 
 orientation = portrait
 fullscreen = 1
 
 android.archs = arm64-v8a
 
-android.api = 35
+android.api = 34
 android.minapi = 24
-
-android.permissions = INTERNET
+android.ndk = 25b
+android.ndk_api = 24
 
 android.accept_sdk_license = True
 
-source.exclude_dirs = .git,.github,.buildozer,bin
+android.permissions = INTERNET
 
 [buildozer]
 
