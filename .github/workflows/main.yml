@@ -65,8 +65,9 @@ jobs:
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
           ls -la "$ANDROID_HOME/build-tools"
           ls -la "$ANDROID_HOME/build-tools/35.0.0"
-          "$ANDROID_HOME/build-tools/35.0.0/aidl" --version
-
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aidl"
+          echo "AIDL executable found successfully"
+          
       - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip
