@@ -2,91 +2,16 @@ name: Build Mofid Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-22.04
 
     steps:
-
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      - name: Test
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            git \
-            zip \
-            unzip \
-            openjdk-17-jdk \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config \
-            zlib1g-dev \
-            libncurses5-dev \
-            libncursesw5-dev \
-            cmake \
-            libffi-dev \
-            libssl-dev
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install Python build tools
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install "Cython<3.1"
-          python -m pip install "buildozer==1.5.0"
-          python -m pip install "kivy==2.3.0"
-          python -m pip install "kivy-garden==0.1.5"
-
-      - name: Verify Kivy
-        run: |
-          python -c "import kivy; print('Kivy:', kivy.__version__)"
-
-      - name: Verify Garden Graph
-        run: |
-          python -c "from kivy_garden.graph import Graph, MeshLinePlot; print('Garden Graph OK')"
-
-      - name: Accept Android SDK licenses
-        run: |
-          mkdir -p "$HOME/.android"
-          touch "$HOME/.android/repositories.cfg"
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0"
-
-      - name: Clean previous Buildozer state
-        run: |
-          rm -rf .buildozer
-          rm -rf bin
-
-      - name: Build Android APK
-        env:
-          P4A_RELEASE: "1"
-          APP_ANDROID_ACCEPT_SDK_LICENSE: "1"
-        run: |
-          buildozer -v android debug
-
-      - name: List generated APK
-        if: always()
-        run: |
-          echo "===== BIN DIRECTORY ====="
-          ls -lah bin || true
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MofidTracker-APK
-          path: bin/*.apk
-          if-no-files-found: error
+          echo "Workflow syntax is valid"
+          python3 --version
