@@ -13,15 +13,40 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Build with Buildozer action
-        id: buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
+      - name: Build APK inside Buildozer Docker image
+        id: build
+        continue-on-error: true
+        run: |
+          docker run --rm -v "$PWD":/home/user/hostcwd kivy/buildozer android debug 2>&1 | tee build_full.log
+
+      - name: Extract error summary
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "===== ERROR SUMMARY ====="
+          grep -n -i -E "error|Traceback|failed|fatal|exception" build_full.log | tail -n 40 > build_errors.log || true
+          cat build_errors.log
+          echo "=========================="
+
+      - name: Upload full build log
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          command: buildozer android debug
-          buildozer_version: stable
+          name: build-full-log
+          path: build_full.log
+
+      - name: Upload error summary
+        if: steps.build.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-error-summary
+          path: build_errors.log
+
+      - name: Fail job if build failed
+        if: steps.build.outcome == 'failure'
+        run: exit 1
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: mofid-tracker-apk
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: bin/*.apk
