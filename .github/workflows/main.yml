@@ -30,7 +30,35 @@ jobs:
         run: pip install --upgrade buildozer cython
 
       - name: Build APK with Buildozer
-        run: buildozer -v android debug
+        id: build
+        continue-on-error: true
+        run: buildozer -v android debug 2>&1 | tee build_full.log
+
+      - name: Extract error summary
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "===== ERROR SUMMARY (last 60 lines around first error) ====="
+          grep -n -i -E "error|Traceback|failed|fatal|exception" build_full.log | head -n 40 > build_errors.log || true
+          cat build_errors.log
+          echo "=============================================================="
+
+      - name: Upload full build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-full-log
+          path: build_full.log
+
+      - name: Upload error summary
+        if: steps.build.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-error-summary
+          path: build_errors.log
+
+      - name: Fail job if build failed
+        if: steps.build.outcome == 'failure'
+        run: exit 1
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
